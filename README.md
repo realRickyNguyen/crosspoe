@@ -1,8 +1,8 @@
 # CrossPoE
 
-**CrossPoE: Robust Multi-Omics Survival Prediction via Latent Cross-Modal Translation with Biologically Interpretable Latent Representations.**
+**CrossPoE: Survival-Calibrated Latent Cross-Modal Translation for Multi-Omics Prognosis Under Block-Wise Missingness.**
 
-CrossPoE is a Product-of-Experts Variational Autoencoder that integrates three genomic modalities, mRNA expression, miRNA expression, and DNA methylation, to predict breast cancer progression-free interval (PFI) survival. The central scientific contribution is missingness robustness via latent cross-modal translation: when a modality is unavailable at inference time, CrossPoE uses learned cross-modal translation heads to synthesise a pseudo-posterior from the available modalities, maintaining predictive performance even at extreme (90%) forced missingness rates.
+We present CrossPoE, a Product-of-Experts variational autoencoder with six directional latent cross-modal translation heads for cancer progression-free interval survival prediction under block-wise missingness. When a modality is absent, CrossPoE synthesises a survival-calibrated pseudo-posterior from observed modalities and injects it into the PoE fusion. Unlike standard latent translation, the translation heads are trained with a survival-preserving objective so that pseudo-posteriors retain prognostic signal rather than only matching latent geometry.
 
 ---
 
