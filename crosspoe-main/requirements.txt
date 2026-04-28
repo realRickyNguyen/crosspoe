@@ -1,0 +1,11 @@
+# Core — required for training
+torch==2.7.1
+numpy==2.2.6
+pandas==2.3.0
+scikit-learn==1.6.1
+lifelines==0.30.0
+
+# Post-training analysis — optional
+matplotlib==3.10.3
+captum==0.8.0       # Integrated Gradients
+mygene==3.2.2       # Ensembl -> gene symbol resolution
