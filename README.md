@@ -2,6 +2,8 @@
 
 **CrossPoE: Task-Signal-Preserving Latent Translation for Robust Multimodal Learning Under Modality Missingness.**
 
+![Figure caption](CrossPoE.png)
+
 We present CrossPoE, a Product-of-Experts variational autoencoder with six directional latent cross-modal translation heads for cancer progression-free interval survival prediction under block-wise missingness. When a modality is absent, CrossPoE synthesises a survival-calibrated pseudo-posterior from observed modalities and injects it into the PoE fusion. Unlike standard latent translation, the translation heads are trained with a survival-preserving objective so that pseudo-posteriors retain prognostic signal rather than only matching latent geometry.
 
 ---
