@@ -35,13 +35,6 @@ class LatentTranslationHead(nn.Module):
 
 
 class TranslationGateNetwork(nn.Module):
-    """
-    Per-sample confidence gate (not used in forward — retained for weight
-    initialisation parity with the canonical notebook, which instantiates
-    these alongside the translation heads so that the RNG state after
-    set_seed() is identical).
-    """
-
     def __init__(self, latent_dim: int, hidden_dim: int = 32):
         super().__init__()
         self.net = nn.Sequential(
@@ -76,7 +69,7 @@ class CrossModalTranslator(nn.Module):
         self.n_modalities = 3
         self.alpha        = alpha
         self.translation_heads = nn.ModuleDict()
-        self.gate_networks     = nn.ModuleDict()  # not used in forward; kept for init RNG parity
+        self.gate_networks     = nn.ModuleDict()  
 
         for src in range(self.n_modalities):
             for tgt in range(self.n_modalities):
