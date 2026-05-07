@@ -142,6 +142,17 @@ def compute_loss(
             outputs["recons"][m_name][obs], recon_targets[m_name][obs]
         )
 
+    if model is not None:
+        _z_indiv  = [outputs.get("z_rna"), outputs.get("z_mirna"), outputs.get("z_methyl")]
+        _decoders = [model.rna_dec, model.mirna_dec, model.methyl_dec]
+        for m_idx, (z_i, dec) in enumerate(zip(_z_indiv, _decoders)):
+            m_name = ["rna", "mirna", "methyl"][m_idx]
+            if z_i is None or recon_targets[m_name] is None:
+                continue
+            if not mask[:, m_idx].any():
+                continue
+            _ = dec(z_i)
+            
     # -- KL divergence --------------------------------------------------------
     mu_poe     = outputs["mu_poe"]
     logvar_poe = outputs["logvar_poe"]
