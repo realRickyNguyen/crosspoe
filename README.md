@@ -230,6 +230,10 @@ Training runs 5-fold stratified cross-validation (stratified on PFI event). At d
 ### Full workflow example
 
 ```python
+import os
+import sys
+import subprocess
+import warnings
 import torch
 import pandas as pd
 from data.dataset import MultiOmicsDataset, load_data
@@ -237,31 +241,68 @@ from training.mcar import run_mcar_crossPoe
 from analysis import compute_translation_jacobians_all_folds, print_majority_vote_summary
 from analysis.plots import plot_kaplan_meier, plot_mcar_comparison
 
-# --- Load data (required in every new Python session) ---
-load_data(
-    rna_path="data/TCGA_BRCA_rna.csv",
-    mirna_path="data/TCGA_BRCA_mirna.csv",
-    methyl_path="data/TCGA_BRCA_methylation.csv",
-    clin_path="data/TCGA_BRCA_clinical.csv",
+warnings.filterwarnings("ignore")
+
+# --- Paths ---
+DATA_DIR    = "/path/to/data"
+RESULTS_DIR = "/path/to/results"
+
+os.makedirs(RESULTS_DIR, exist_ok=True)
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
+# --- Train via train.py ---
+print("\n=== Starting Training ===")
+result = subprocess.run(
+    [
+        sys.executable, "train.py",
+        "--rna-path",    f"{DATA_DIR}/TCGA_rna.csv",
+        "--mirna-path",  f"{DATA_DIR}/TCGA_mirna.csv",
+        "--methyl-path", f"{DATA_DIR}/TCGA_methylation.csv",
+        "--clin-path",   f"{DATA_DIR}/TCGA-BRCA.full_clinical.csv",
+        "--out-dir",     RESULTS_DIR,
+        "--seed",        "0",
+    ],
+    check=True,
 )
-clinical_df = pd.read_csv("data/TCGA_BRCA_clinical.csv", low_memory=False)
+
+# --- Load saved results ---
+print("\n=== Loading Results ===")
+fold_results = torch.load(f"{RESULTS_DIR}/fold_results.pt", weights_only=False)
+cfg          = torch.load(f"{RESULTS_DIR}/config.pt",       weights_only=False)
+
+# --- Reload data (class attributes need repopulating in this process) ---
+load_data(
+    rna_path    = f"{DATA_DIR}/TCGA_rna.csv",
+    mirna_path  = f"{DATA_DIR}/TCGA_mirna.csv",
+    methyl_path = f"{DATA_DIR}/TCGA_methylation.csv",
+    clin_path   = f"{DATA_DIR}/TCGA-BRCA.full_clinical.csv",
+)
+clinical_df = pd.read_csv(f"{DATA_DIR}/TCGA-BRCA.full_clinical.csv", low_memory=False)
 MultiOmicsDataset._prepare_survival_labels(clinical_df, MultiOmicsDataset._sample_ids)
 
-device       = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-fold_results = torch.load("results/tcga_brca/fold_results.pt", weights_only=False)
-cfg          = torch.load("results/tcga_brca/config.pt",       weights_only=False)
-
 # --- MCAR robustness ---
+print("\n=== Running MCAR Evaluation ===")
 mcar_results = run_mcar_crossPoe(fold_results, cfg, device)
 
 # --- Jacobian hub analysis ---
+print("\n=== Computing Jacobians ===")
 jacobians_mean, jacobians_std, fold_jacs = compute_translation_jacobians_all_folds(
     fold_results, cfg, device
 )
-hub_dims = print_majority_vote_summary(fold_jacs, jacobians_mean, top_k=8, min_folds=4)
+hub_dims = print_majority_vote_summary(
+    fold_jacs, jacobians_mean, top_k=8, min_folds=4, min_global_appearances=4
+)
 
 # --- Kaplan-Meier plot ---
-plot_kaplan_meier(fold_results, cfg, device, save_path="results/tcga_brca/kaplan_meier.svg")
+print("\n=== Plotting Kaplan-Meier ===")
+plot_kaplan_meier(
+    fold_results, cfg, device,
+    save_path=f"{RESULTS_DIR}/kaplan_meier.svg",
+)
+
+print(f"\nDone. All outputs saved to: {RESULTS_DIR}")
 ```
 
 
