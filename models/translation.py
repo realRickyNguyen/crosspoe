@@ -34,6 +34,29 @@ class LatentTranslationHead(nn.Module):
         return mu_pseudo, logvar_pseudo
 
 
+class TranslationGateNetwork(nn.Module):
+    """
+    Per-sample confidence gate (not used in forward — retained for weight
+    initialisation parity with the canonical notebook, which instantiates
+    these alongside the translation heads so that the RNG state after
+    set_seed() is identical).
+    """
+
+    def __init__(self, latent_dim: int, hidden_dim: int = 32):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(2 * latent_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.GELU(),
+            nn.Linear(hidden_dim, 1),
+        )
+        nn.init.zeros_(self.net[-1].weight)
+        nn.init.constant_(self.net[-1].bias, -1.0)
+
+    def forward(self, mu_src: torch.Tensor, logvar_src: torch.Tensor) -> torch.Tensor:
+        return torch.sigmoid(self.net(torch.cat([mu_src, logvar_src], dim=-1)))
+
+
 class CrossModalTranslator(nn.Module):
     """
     Manages all 6 pairwise translation directions among (rna, mirna, methyl).
@@ -47,12 +70,13 @@ class CrossModalTranslator(nn.Module):
 
     MODALITY_NAMES = ["rna", "mirna", "methyl"]
 
-    def __init__(self, latent_dim: int, hidden_dim: int = 96, alpha: float = 0.75):
+    def __init__(self, latent_dim: int, hidden_dim: int = 96, gate_hidden_dim: int = 32, alpha: float = 0.75):
         super().__init__()
         self.latent_dim   = latent_dim
         self.n_modalities = 3
         self.alpha        = alpha
         self.translation_heads = nn.ModuleDict()
+        self.gate_networks     = nn.ModuleDict()  # not used in forward; kept for init RNG parity
 
         for src in range(self.n_modalities):
             for tgt in range(self.n_modalities):
@@ -60,6 +84,7 @@ class CrossModalTranslator(nn.Module):
                     continue
                 key = f"{src}_to_{tgt}"
                 self.translation_heads[key] = LatentTranslationHead(latent_dim, hidden_dim)
+                self.gate_networks[key]     = TranslationGateNetwork(latent_dim, gate_hidden_dim)
 
     def forward(self, mus, logvars, mask):
         """
